@@ -5,6 +5,8 @@ from PIL import ImageTk, Image
 from angem.matrix import Matrix
 
 from angem.vector2 import Vector2
+from mapping.tile import tile_factory
+from mapping.worldmap import WorldMap
 
 
 def abs_mouse(root):
@@ -14,13 +16,11 @@ def abs_mouse(root):
     )
 
 
-size = Vector2(15, 10)
 scaling = 4
 tile_size = 16
 tile_scaled_size = scaling * tile_size
-master_size = size * scaling * tile_size
-field = Matrix.filled(None, size.y, size.x)
-displaying_field = Matrix.filled(None, size.y, size.x)
+world_map = WorldMap(Vector2(15, 10))
+master_size = world_map.size * scaling * tile_size
 
 if __name__ == '__main__':
     master = Tk()
@@ -29,20 +29,17 @@ if __name__ == '__main__':
     canvas = Canvas(master, width=master_size.x, height=master_size.y)
     canvas.pack()
 
-    source = Image.open('assets/sprites/Stone wall tile.png')
-    source = source.resize(tuple(Vector2(*source.size) * scaling), Image.NEAREST)
-    displaying_field[1, 2] = ImageTk.PhotoImage(source)
-    field[1, 2] = source
+    tile = tile_factory(scaling)
 
-    cursor = source.copy()
+    stonewall = tile("Stone wall tile")
+
+    cursor = stonewall.pil_image.copy()
     cursor.putalpha(192)
     cursor = ImageTk.PhotoImage(cursor)
 
 
     def lmb_pressed(event):
-        v = Vector2(event.x, event.y) // tile_scaled_size
-        displaying_field[v] = ImageTk.PhotoImage(source)
-        field[v] = source
+        world_map.put_tile(Vector2(event.x, event.y) // tile_scaled_size, stonewall)
 
 
     master.bind("<Button-1>", lmb_pressed)
@@ -51,7 +48,7 @@ if __name__ == '__main__':
         while True:
             canvas.delete("all")
 
-            for v, img in displaying_field.enumerate():
+            for v, img in world_map.displaying_field.enumerate():
                 canvas.create_image(*(v * tile_scaled_size), anchor=NW, image=img)
 
             canvas.create_image(*(abs_mouse(master) // tile_scaled_size * tile_scaled_size), anchor=NW, image=cursor)
@@ -65,7 +62,7 @@ if __name__ == '__main__':
     finally:
         result = Image.new("RGBA", tuple(master_size), color=(0, 0, 0, 0))
 
-        for v, img in field.enumerate():
+        for v, img in world_map.pil_enumerate():
             if img:
                 result.paste(img, tuple(v * tile_scaled_size))
 
